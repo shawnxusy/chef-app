@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import { asyncHandler, AppError } from '../middleware/error.js';
-import { db } from '../db/client.js';
 import { recipeService } from '../services/recipe.service.js';
 import { llmService } from '../services/llm.service.js';
 import type { CreateRecipeInput, UpdateRecipeInput, RecipeFilters } from '@chef-app/shared';
@@ -27,7 +26,8 @@ router.get('/', asyncHandler(async (req, res) => {
 
 // GET /api/recipes/:id - Get single recipe
 router.get('/:id', asyncHandler(async (req, res) => {
-  const recipe = await recipeService.getRecipe(req.params.id);
+  const id = req.params.id as string;
+  const recipe = await recipeService.getRecipe(id);
 
   if (!recipe) {
     throw new AppError('NOT_FOUND', '未找到该菜谱', 404);
@@ -51,7 +51,8 @@ router.post('/', asyncHandler(async (req, res) => {
 
 // PUT /api/recipes/:id - Update recipe
 router.put('/:id', asyncHandler(async (req, res) => {
-  const input: UpdateRecipeInput = { ...req.body, id: req.params.id };
+  const id = req.params.id as string;
+  const input: UpdateRecipeInput = { ...req.body, id };
 
   const recipe = await recipeService.updateRecipe(input);
 
@@ -64,7 +65,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 // DELETE /api/recipes/:id - Soft delete recipe
 router.delete('/:id', asyncHandler(async (req, res) => {
-  const result = await recipeService.deleteRecipe(req.params.id);
+  const id = req.params.id as string;
+  const result = await recipeService.deleteRecipe(id);
 
   if (!result) {
     throw new AppError('NOT_FOUND', '未找到该菜谱', 404);
