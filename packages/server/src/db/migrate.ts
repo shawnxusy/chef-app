@@ -4,9 +4,28 @@ import { fileURLToPath } from 'url';
 import { db } from './client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const migrationsDir = path.join(__dirname, 'migrations');
 
-async function migrate() {
+export async function runMigrations() {
+  // In production, migrations are in dist/db/migrations
+  // In development, they're in src/db/migrations
+  const possiblePaths = [
+    path.join(__dirname, 'migrations'),
+    path.join(__dirname, '..', '..', 'src', 'db', 'migrations')
+  ];
+
+  let migrationsDir = '';
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      migrationsDir = p;
+      break;
+    }
+  }
+
+  if (!migrationsDir) {
+    console.log('No migrations directory found, skipping migrations');
+    return;
+  }
+
   console.log('Starting database migration...');
 
   // Create migrations table if not exists
@@ -53,10 +72,15 @@ async function migrate() {
   }
 
   console.log('Migration complete!');
-  process.exit(0);
 }
 
-migrate().catch((err) => {
-  console.error('Migration failed:', err);
-  process.exit(1);
-});
+// Run directly if this is the main module
+const isMain = import.meta.url === `file://${process.argv[1]}`;
+if (isMain) {
+  runMigrations()
+    .then(() => process.exit(0))
+    .catch((err) => {
+      console.error('Migration failed:', err);
+      process.exit(1);
+    });
+}

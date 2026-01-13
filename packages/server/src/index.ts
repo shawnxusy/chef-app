@@ -4,6 +4,7 @@ import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { runMigrations } from './db/migrate.js';
 import { authMiddleware } from './middleware/auth.js';
 import { errorHandler } from './middleware/error.js';
 import authRoutes from './routes/auth.js';
@@ -66,8 +67,21 @@ if (process.env.NODE_ENV === 'production') {
 // Error handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+// Run migrations on startup, then start server
+async function startServer() {
+  try {
+    await runMigrations();
+    console.log('Database ready');
+  } catch (err) {
+    console.error('Database migration failed:', err);
+    // Continue anyway - migrations might already be done
+  }
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+startServer();
 
 export default app;
