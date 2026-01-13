@@ -20,9 +20,19 @@ router.post('/verify', asyncHandler(async (req, res) => {
 
   if (verifyPassword(password)) {
     req.session.authenticated = true;
-    return res.json({
-      success: true,
-      data: { authenticated: true }
+    // Explicitly save session before responding to ensure cookie is set
+    return new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          res.json({
+            success: true,
+            data: { authenticated: true }
+          });
+          resolve();
+        }
+      });
     });
   }
 
