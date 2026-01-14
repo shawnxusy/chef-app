@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler, AppError } from '../middleware/error.js';
 import fs from 'fs';
+import { db } from '../db/client.js';
 
 const router = Router();
 
@@ -42,7 +43,7 @@ const upload = multer({
   }
 });
 
-// POST /api/upload - Upload images
+// POST /api/upload - Upload recipe cover images
 router.post('/', upload.array('files', 10), asyncHandler(async (req, res) => {
   const files = req.files as Express.Multer.File[];
 
@@ -54,6 +55,37 @@ router.post('/', upload.array('files', 10), asyncHandler(async (req, res) => {
     id: path.basename(file.filename, path.extname(file.filename)),
     filePath: `/media/${file.filename}`,
     originalName: file.originalname
+  }));
+
+  return res.json({
+    success: true,
+    data: { files: uploadedFiles }
+  });
+}));
+
+// POST /api/upload/step-image - Upload step images (up to 3)
+router.post('/step-image', upload.array('files', 3), asyncHandler(async (req, res) => {
+  const files = req.files as Express.Multer.File[];
+
+  if (!files || files.length === 0) {
+    throw new AppError('NO_FILES', '请选择要上传的文件', 400);
+  }
+
+  // Insert into step_images table with NULL recipe_id (will be associated later)
+  const uploadedFiles = await Promise.all(files.map(async (file) => {
+    const filePath = `/media/${file.filename}`;
+    const result = await db.query<{ id: string }>(
+      `INSERT INTO step_images (file_path, step_index, sort_order)
+       VALUES ($1, 0, 0)
+       RETURNING id`,
+      [filePath]
+    );
+
+    return {
+      id: result.rows[0].id,
+      filePath,
+      originalName: file.originalname
+    };
   }));
 
   return res.json({

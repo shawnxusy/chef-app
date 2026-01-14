@@ -19,6 +19,20 @@ export interface RecipeImage {
   createdAt: Date;
 }
 
+// Recipe step with images
+export interface RecipeStep {
+  text: string;
+  imageIds: string[];
+}
+
+// Step image
+export interface StepImage {
+  id: string;
+  stepIndex: number;
+  filePath: string;
+  sortOrder: number;
+}
+
 // Full recipe
 export interface Recipe {
   id: string;
@@ -27,7 +41,8 @@ export interface Recipe {
   cookTimeRangeId: string | null;
   cookTimeRange: CookTimeRange | null;
   ingredients: RecipeIngredient[];
-  steps: string[];
+  steps: RecipeStep[];
+  stepImages: StepImage[];
   images: RecipeImage[];
   regions: CuisineRegion[];
   categories: CuisineCategory[];
@@ -58,12 +73,17 @@ export interface RecipeIngredientInput {
   count: number | null;
 }
 
+export interface RecipeStepInput {
+  text: string;
+  imageIds?: string[];
+}
+
 export interface CreateRecipeInput {
   name: string;
   alternativeName?: string;
   cookTimeRangeId?: string;
   ingredients: RecipeIngredientInput[];
-  steps: string[];
+  steps: RecipeStepInput[];
   imageIds?: string[];  // IDs of already uploaded images
   regionIds?: string[];
   categoryIds?: string[];
@@ -84,7 +104,14 @@ export interface RecipeFilters {
 }
 
 // LLM parse result
+export interface ParsedRecipeStep {
+  text: string;
+  imageUrl?: string;  // External URL from parsed site
+  imageId?: string;   // Local ID after download
+}
+
 export interface ParsedRecipeData {
+  name?: string;        // Recipe name if extracted
   ingredients: Array<{
     name: string;           // Ingredient name (may be new)
     count: number | null;
@@ -92,5 +119,5 @@ export interface ParsedRecipeData {
     matchedIngredientId?: string;  // If matched to existing
     matchedUnitId?: string;        // If matched to existing
   }>;
-  steps: string[];
+  steps: ParsedRecipeStep[];
 }

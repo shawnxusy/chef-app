@@ -314,7 +314,7 @@ export function PreparationPage() {
                               <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">
                                 {stepIndex + 1}
                               </span>
-                              <p className="text-gray-700 pt-0.5">{step}</p>
+                              <p className="text-gray-700 pt-0.5">{step.text}</p>
                             </li>
                           ))}
                         </ol>

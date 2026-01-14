@@ -47,12 +47,30 @@ class ApiClient {
     return this.request<T>('DELETE', path);
   }
 
-  // File upload
+  // File upload for recipe cover images
   async upload(files: File[]): Promise<{ files: Array<{ id: string; filePath: string; originalName: string }> }> {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
 
     const response = await fetch(`${API_BASE}/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error(data.error.message);
+    }
+    return data.data;
+  }
+
+  // File upload for step images (up to 3 images)
+  async uploadStepImage(files: File[]): Promise<{ files: Array<{ id: string; filePath: string; originalName: string }> }> {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+
+    const response = await fetch(`${API_BASE}/upload/step-image`, {
       method: 'POST',
       credentials: 'include',
       body: formData,

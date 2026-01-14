@@ -133,15 +133,36 @@ export function RecipeDetailPage() {
       {/* Steps */}
       <div className="card p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">烹饪步骤</h2>
-        <ol className="space-y-4">
-          {recipe.steps?.map((step, index) => (
-            <li key={index} className="flex gap-4">
-              <span className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-medium">
-                {index + 1}
-              </span>
-              <p className="text-gray-700 pt-1">{step}</p>
-            </li>
-          ))}
+        <ol className="space-y-6">
+          {recipe.steps?.map((step, index) => {
+            // Get images for this step
+            const stepImages = (step.imageIds || [])
+              .map(imageId => recipe.stepImages?.find(img => img.id === imageId))
+              .filter(Boolean);
+
+            return (
+              <li key={index} className="space-y-3">
+                <div className="flex gap-4">
+                  <span className="flex-shrink-0 w-8 h-8 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center font-medium">
+                    {index + 1}
+                  </span>
+                  <p className="text-gray-700 pt-1">{step.text}</p>
+                </div>
+                {stepImages.length > 0 && (
+                  <div className="ml-12 grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {stepImages.map((img) => (
+                      <img
+                        key={img!.id}
+                        src={img!.filePath}
+                        alt={`步骤 ${index + 1}`}
+                        className="w-full aspect-[4/3] object-cover rounded-lg"
+                      />
+                    ))}
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ol>
       </div>
 

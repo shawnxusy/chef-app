@@ -5,8 +5,27 @@ import type {
   CreateRecipeInput,
   UpdateRecipeInput,
   RecipeFilters,
-  PaginatedResponse
+  PaginatedResponse,
+  RecipeStep,
+  StepImage
 } from '@chef-app/shared';
+
+// Helper to convert old string[] steps to new RecipeStep[] format
+function normalizeSteps(steps: unknown): RecipeStep[] {
+  if (!Array.isArray(steps)) return [];
+  if (steps.length === 0) return [];
+
+  // Check if it's old format (array of strings)
+  if (typeof steps[0] === 'string') {
+    return steps.map((text: string) => ({ text, imageIds: [] }));
+  }
+
+  // New format - ensure each step has imageIds array
+  return steps.map((step: { text?: string; imageIds?: string[] }) => ({
+    text: step.text || '',
+    imageIds: step.imageIds || []
+  }));
+}
 
 class RecipeService {
   async listRecipes(
@@ -238,8 +257,22 @@ class RecipeService {
       [id]
     );
 
+    // Get step images
+    const stepImagesResult = await db.query<StepImage>(
+      `SELECT id, step_index as "stepIndex", file_path as "filePath", sort_order as "sortOrder"
+       FROM step_images
+       WHERE recipe_id = $1
+       ORDER BY step_index, sort_order`,
+      [id]
+    );
+
+    // Normalize steps to new format (handles backward compatibility)
+    const normalizedSteps = normalizeSteps(recipe.steps);
+
     return {
       ...recipe,
+      steps: normalizedSteps,
+      stepImages: stepImagesResult.rows,
       ingredients: ingredientsResult.rows as Recipe['ingredients'],
       images: imagesResult.rows as Recipe['images'],
       regions: regionsResult.rows as Recipe['regions'],
@@ -283,6 +316,20 @@ class RecipeService {
             `UPDATE recipe_images SET recipe_id = $1, sort_order = $2 WHERE id = $3`,
             [recipeId, i, input.imageIds[i]]
           );
+        }
+      }
+
+      // Add step images
+      if (input.steps && input.steps.length > 0) {
+        for (let stepIndex = 0; stepIndex < input.steps.length; stepIndex++) {
+          const step = input.steps[stepIndex];
+          const imageIds = step.imageIds || [];
+          for (let sortOrder = 0; sortOrder < imageIds.length; sortOrder++) {
+            await client.query(
+              `UPDATE step_images SET recipe_id = $1, step_index = $2, sort_order = $3 WHERE id = $4`,
+              [recipeId, stepIndex, sortOrder, imageIds[sortOrder]]
+            );
+          }
         }
       }
 
@@ -350,7 +397,12 @@ class RecipeService {
       }
       if (input.steps !== undefined) {
         updates.push(`steps = $${paramIndex++}`);
-        params.push(JSON.stringify(input.steps));
+        // Store steps in new format
+        const stepsToStore = input.steps.map(s => ({
+          text: s.text,
+          imageIds: s.imageIds || []
+        }));
+        params.push(JSON.stringify(stepsToStore));
       }
 
       if (params.length > 0) {
@@ -374,6 +426,26 @@ class RecipeService {
              VALUES ($1, $2, $3, $4, $5)`,
             [input.id, ing.ingredientId, ing.unitId, ing.count, i]
           );
+        }
+      }
+
+      // Update step images
+      if (input.steps !== undefined) {
+        // Remove existing step images from this recipe (reset recipe_id to null)
+        await client.query(
+          `UPDATE step_images SET recipe_id = NULL WHERE recipe_id = $1`,
+          [input.id]
+        );
+        // Associate new step images
+        for (let stepIndex = 0; stepIndex < input.steps.length; stepIndex++) {
+          const step = input.steps[stepIndex];
+          const imageIds = step.imageIds || [];
+          for (let sortOrder = 0; sortOrder < imageIds.length; sortOrder++) {
+            await client.query(
+              `UPDATE step_images SET recipe_id = $1, step_index = $2, sort_order = $3 WHERE id = $4`,
+              [input.id, stepIndex, sortOrder, imageIds[sortOrder]]
+            );
+          }
         }
       }
 
