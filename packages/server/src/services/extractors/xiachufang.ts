@@ -1,66 +1,140 @@
 import type { ExtractedRecipe, RecipeExtractor } from './types.js';
 
-// Xiachufang embeds recipe data in JavaScript: window.__INITIAL_STATE__ = {...}
+// Xiachufang mobile site embeds recipe data in window.__NUXT__
+// The data uses a minified function pattern with parameters
 export const extractXiachufang: RecipeExtractor = async (html: string) => {
   try {
-    // Look for the initial state JSON
-    const match = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});?\s*(?:<\/script>|window\.)/);
-    if (!match) {
-      // Try alternative pattern - sometimes it's embedded differently
-      const altMatch = html.match(/"recipe"\s*:\s*(\{[^}]+(?:\{[^}]*\}[^}]*)*\})/);
+    // Try Schema.org JSON-LD first (more reliable)
+    const jsonLdMatch = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/i);
+    if (jsonLdMatch) {
+      try {
+        const jsonLd = JSON.parse(jsonLdMatch[1]);
+        if (jsonLd['@type'] === 'Recipe') {
+          return extractFromSchemaOrg(jsonLd);
+        }
+      } catch {
+        // Continue to __NUXT__ extraction
+      }
+    }
+
+    // Try __NUXT__ data extraction
+    const nuxtMatch = html.match(/window\.__NUXT__\s*=\s*\(function\([^)]*\)\s*\{return\s*(\{[\s\S]*?\})\}\([^)]*\)\)/);
+    if (!nuxtMatch) {
+      // Try alternative patterns
+      const altMatch = html.match(/window\.__NUXT__\s*=\s*(\{[\s\S]*?\});?\s*<\/script>/);
       if (!altMatch) return null;
     }
 
-    const jsonStr = match?.[1];
-    if (!jsonStr) return null;
+    // The __NUXT__ format is complex and minified, so we'll use regex to extract key data
+    // Extract recipe name
+    const nameMatch = html.match(/"name"\s*:\s*"([^"]+)"/);
 
-    // Parse the JSON - it might have some issues, so we'll be careful
-    let data: {
-      recipe?: {
-        name?: string;
-        ings?: Array<{ name?: string; unit?: string }>;
-        instruction?: Array<{
-          step?: number;
-          text?: string;
-          img?: { ident?: string };
-        }>;
-      };
-    };
-
-    try {
-      data = JSON.parse(jsonStr);
-    } catch {
-      // Try cleaning up the JSON string
-      const cleanedJson = jsonStr
-        .replace(/undefined/g, 'null')
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']');
-      data = JSON.parse(cleanedJson);
+    // Extract ingredients - look for ings array
+    const ingsMatch = html.match(/"ings"\s*:\s*\[([\s\S]*?)\]/);
+    const ingredients: Array<{ name: string; amount?: string }> = [];
+    if (ingsMatch) {
+      const ingPattern = /"name"\s*:\s*"([^"]+)"[^}]*?"unit"\s*:\s*"([^"]*)"/g;
+      let ingMatch;
+      while ((ingMatch = ingPattern.exec(ingsMatch[1])) !== null) {
+        ingredients.push({
+          name: ingMatch[1],
+          amount: ingMatch[2] || undefined
+        });
+      }
     }
 
-    if (!data.recipe) return null;
+    // Extract instructions with images
+    const instructionMatch = html.match(/"instruction"\s*:\s*\[([\s\S]*?)\](?=\s*,\s*"[a-z])/i);
+    const steps: Array<{ text: string; imageUrl?: string }> = [];
 
-    const recipe = data.recipe;
+    if (instructionMatch) {
+      // Match each instruction object
+      const stepPattern = /\{[^{}]*"text"\s*:\s*"([^"]*)"[^{}]*(?:"image"\s*:\s*\{[^{}]*"ident"\s*:\s*"([^"]*)"[^{}]*\})?[^{}]*\}/g;
+      let stepMatch;
+      while ((stepMatch = stepPattern.exec(instructionMatch[1])) !== null) {
+        const text = stepMatch[1];
+        const imageIdent = stepMatch[2];
+        if (text) {
+          steps.push({
+            text: text.replace(/\\n/g, '\n').replace(/；/g, ''),
+            imageUrl: imageIdent
+              ? `https://i2.chuimg.com/${imageIdent}`
+              : undefined
+          });
+        }
+      }
+    }
 
-    const result: ExtractedRecipe = {
-      name: recipe.name,
-      ingredients: (recipe.ings || []).map(ing => ({
-        name: ing.name || '',
-        amount: ing.unit || undefined
-      })).filter(ing => ing.name),
-      steps: (recipe.instruction || [])
-        .sort((a, b) => (a.step || 0) - (b.step || 0))
-        .map(step => ({
-          text: step.text || '',
-          imageUrl: step.img?.ident
-            ? `https://i2.chuimg.com/${step.img.ident}?imageView2/1/w/800/h/600/q/75`
-            : undefined
-        }))
-        .filter(step => step.text)
+    // If we couldn't extract steps via regex, try a different approach
+    if (steps.length === 0) {
+      // Look for step text directly
+      const stepTexts = html.match(/"text"\s*:\s*"([^"]{5,})"/g);
+      const stepImages = html.match(/"ident"\s*:\s*"([^"]+_\d+w_\d+h\.[a-z]+)"/g);
+
+      if (stepTexts) {
+        stepTexts.forEach((match, index) => {
+          const textMatch = match.match(/"text"\s*:\s*"([^"]+)"/);
+          if (textMatch && textMatch[1].length > 5) {
+            let imageUrl: string | undefined;
+            if (stepImages && stepImages[index]) {
+              const imgMatch = stepImages[index].match(/"ident"\s*:\s*"([^"]+)"/);
+              if (imgMatch) {
+                imageUrl = `https://i2.chuimg.com/${imgMatch[1]}`;
+              }
+            }
+            steps.push({
+              text: textMatch[1].replace(/\\n/g, '\n').replace(/；/g, ''),
+              imageUrl
+            });
+          }
+        });
+      }
+    }
+
+    if (steps.length === 0) return null;
+
+    return {
+      name: nameMatch?.[1],
+      ingredients,
+      steps
     };
-
-    return result;
   } catch {
     return null;
   }
 };
+
+// Helper to extract from Schema.org JSON-LD
+function extractFromSchemaOrg(jsonLd: {
+  name?: string;
+  recipeIngredient?: string[];
+  recipeInstructions?: Array<{ text?: string; image?: string | { url?: string } }> | string;
+}): ExtractedRecipe {
+  const ingredients = (jsonLd.recipeIngredient || []).map(ing => ({
+    name: ing
+  }));
+
+  let steps: Array<{ text: string; imageUrl?: string }> = [];
+
+  if (typeof jsonLd.recipeInstructions === 'string') {
+    // Single string of instructions
+    steps = jsonLd.recipeInstructions.split(/\n|。/).filter(s => s.trim()).map(text => ({ text: text.trim() }));
+  } else if (Array.isArray(jsonLd.recipeInstructions)) {
+    steps = jsonLd.recipeInstructions.map(instruction => {
+      if (typeof instruction === 'string') {
+        return { text: instruction };
+      }
+      return {
+        text: instruction.text || '',
+        imageUrl: typeof instruction.image === 'string'
+          ? instruction.image
+          : instruction.image?.url
+      };
+    }).filter(s => s.text);
+  }
+
+  return {
+    name: jsonLd.name,
+    ingredients,
+    steps
+  };
+}

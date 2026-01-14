@@ -1,9 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk';
 import * as cheerio from 'cheerio';
 import { db } from '../db/client.js';
-import type { ParsedRecipeData, ParsedRecipeStep } from '@chef-app/shared';
+import type { ParsedRecipeData } from '@chef-app/shared';
 import { getExtractor, extractSchemaRecipe, type ExtractedRecipe } from './extractors/index.js';
-import { downloadAndSaveImage } from './image-download.js';
 
 interface ParseRecipeInput {
   url?: string;
@@ -95,23 +94,11 @@ class LLMService {
     const units = unitsResult.rows;
     const ingredients = ingredientsResult.rows;
 
-    // Download step images in parallel
-    const stepsWithImages: ParsedRecipeStep[] = await Promise.all(
-      recipe.steps.map(async (step) => {
-        let imageId: string | undefined;
-        if (step.imageUrl) {
-          const downloaded = await downloadAndSaveImage(step.imageUrl);
-          if (downloaded) {
-            imageId = downloaded.id;
-          }
-        }
-        return {
-          text: step.text,
-          imageUrl: step.imageUrl,
-          imageId
-        };
-      })
-    );
+    // Map steps with their image URLs (no downloading, just keep the URLs)
+    const steps = recipe.steps.map((step) => ({
+      text: step.text,
+      imageUrl: step.imageUrl
+    }));
 
     // Parse ingredients with amount strings using LLM
     const parsedIngredients = await this.parseIngredientsList(
@@ -125,7 +112,7 @@ class LLMService {
     return {
       name: recipe.name,
       ingredients: parsedIngredients,
-      steps: stepsWithImages
+      steps
     };
   }
 

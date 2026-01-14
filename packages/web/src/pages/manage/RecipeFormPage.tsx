@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useReference } from '@/context/ReferenceContext';
@@ -7,15 +7,7 @@ import { IngredientInput } from '@/components/IngredientInput';
 import { StepEditor } from '@/components/StepEditor';
 import { ImageUploader } from '@/components/ImageUploader';
 import { LLMParser } from '@/components/LLMParser';
-import type { Recipe, CreateRecipeInput, RecipeIngredientInput, RecipeStepInput, StepImage, ParsedRecipeData } from '@chef-app/shared';
-
-// Track pending step images (not yet uploaded)
-interface PendingStepImage {
-  tempId: string;
-  file: File;
-  stepIndex: number;
-  previewUrl: string;
-}
+import type { Recipe, CreateRecipeInput, RecipeIngredientInput, RecipeStepInput, ParsedRecipeData } from '@chef-app/shared';
 
 export function RecipeFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,37 +24,12 @@ export function RecipeFormPage() {
   const [alternativeName, setAlternativeName] = useState('');
   const [cookTimeRangeId, setCookTimeRangeId] = useState('');
   const [ingredients, setIngredients] = useState<RecipeIngredientInput[]>([]);
-  const [steps, setSteps] = useState<RecipeStepInput[]>([{ text: '', imageIds: [] }]);
+  const [steps, setSteps] = useState<RecipeStepInput[]>([{ text: '' }]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [existingImages, setExistingImages] = useState<Array<{ id: string; filePath: string }>>([]);
   const [regionIds, setRegionIds] = useState<string[]>([]);
   const [categoryIds, setCategoryIds] = useState<string[]>([]);
   const [methodIds, setMethodIds] = useState<string[]>([]);
-
-  // Step images state
-  const [existingStepImages, setExistingStepImages] = useState<StepImage[]>([]);
-  const [pendingStepImages, setPendingStepImages] = useState<PendingStepImage[]>([]);
-
-  // Build map of imageId -> StepImage for existing images
-  const stepImageMap = useMemo(() => {
-    const map = new Map<string, StepImage>();
-    existingStepImages.forEach(img => map.set(img.id, img));
-    return map;
-  }, [existingStepImages]);
-
-  // Build map of tempId -> preview URL for pending images
-  const pendingImageUrls = useMemo(() => {
-    const map = new Map<string, string>();
-    pendingStepImages.forEach(img => map.set(img.tempId, img.previewUrl));
-    return map;
-  }, [pendingStepImages]);
-
-  // Clean up preview URLs on unmount
-  useEffect(() => {
-    return () => {
-      pendingStepImages.forEach(img => URL.revokeObjectURL(img.previewUrl));
-    };
-  }, []);
 
   // Load existing recipe when editing
   useEffect(() => {
@@ -81,15 +48,14 @@ export function RecipeFormPage() {
             count: ing.count,
           })) || []
         );
-        // Steps are now RecipeStep[] with imageIds
+        // Steps with optional imageUrl
         const loadedSteps: RecipeStepInput[] = recipe.steps?.length
           ? recipe.steps.map(s => ({
               text: s.text,
-              imageIds: s.imageIds || []
+              imageUrl: s.imageUrl
             }))
-          : [{ text: '', imageIds: [] }];
+          : [{ text: '' }];
         setSteps(loadedSteps);
-        setExistingStepImages(recipe.stepImages || []);
         setExistingImages(recipe.images || []);
         setRegionIds(recipe.regions?.map((r) => r.id) || []);
         setCategoryIds(recipe.categories?.map((c) => c.id) || []);
@@ -102,60 +68,6 @@ export function RecipeFormPage() {
     }
     fetchRecipe();
   }, [id]);
-
-  // Handle adding images to a step
-  const handleAddStepImages = useCallback((stepIndex: number, files: File[]) => {
-    const newPending: PendingStepImage[] = files.map(file => {
-      const tempId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      return {
-        tempId,
-        file,
-        stepIndex,
-        previewUrl: URL.createObjectURL(file)
-      };
-    });
-
-    setPendingStepImages(prev => [...prev, ...newPending]);
-
-    // Add temp IDs to the step
-    setSteps(prev => {
-      const newSteps = [...prev];
-      const step = newSteps[stepIndex];
-      newSteps[stepIndex] = {
-        ...step,
-        imageIds: [...(step.imageIds || []), ...newPending.map(p => p.tempId)]
-      };
-      return newSteps;
-    });
-  }, []);
-
-  // Handle removing an image from a step
-  const handleRemoveStepImage = useCallback((stepIndex: number, imageId: string) => {
-    // Check if it's a pending image
-    const pendingIndex = pendingStepImages.findIndex(p => p.tempId === imageId);
-    if (pendingIndex >= 0) {
-      // Remove from pending and revoke URL
-      setPendingStepImages(prev => {
-        const img = prev[pendingIndex];
-        URL.revokeObjectURL(img.previewUrl);
-        return prev.filter((_, i) => i !== pendingIndex);
-      });
-    } else {
-      // Remove from existing step images (mark for removal)
-      setExistingStepImages(prev => prev.filter(img => img.id !== imageId));
-    }
-
-    // Remove from step's imageIds
-    setSteps(prev => {
-      const newSteps = [...prev];
-      const step = newSteps[stepIndex];
-      newSteps[stepIndex] = {
-        ...step,
-        imageIds: (step.imageIds || []).filter(id => id !== imageId)
-      };
-      return newSteps;
-    });
-  }, [pendingStepImages]);
 
   const handleLLMParsed = (data: ParsedRecipeData) => {
     // Set recipe name if extracted
@@ -172,26 +84,14 @@ export function RecipeFormPage() {
 
     setIngredients(newIngredients);
 
-    // Steps now include imageIds from LLM parsing
+    // Steps with imageUrl from parsing
     const newSteps: RecipeStepInput[] = data.steps.length
       ? data.steps.map(s => ({
           text: s.text,
-          imageIds: s.imageId ? [s.imageId] : []
+          imageUrl: s.imageUrl
         }))
-      : [{ text: '', imageIds: [] }];
+      : [{ text: '' }];
     setSteps(newSteps);
-
-    // If LLM downloaded images, they're already in step_images table
-    // We need to track them as "existing" step images
-    const downloadedImages: StepImage[] = data.steps
-      .filter(s => s.imageId)
-      .map((s, index) => ({
-        id: s.imageId!,
-        stepIndex: index,
-        filePath: '', // Will be fetched when saved
-        sortOrder: 0
-      }));
-    setExistingStepImages(downloadedImages);
 
     // Refresh reference data in case new ingredients were added
     refreshRef();
@@ -215,25 +115,12 @@ export function RecipeFormPage() {
         uploadedImageIds = uploadResult.files.map((f) => f.id);
       }
 
-      // Upload pending step images and map temp IDs to real IDs
-      const tempIdToRealId = new Map<string, string>();
-      if (pendingStepImages.length > 0) {
-        const uploadResult = await api.uploadStepImage(pendingStepImages.map(p => p.file));
-        pendingStepImages.forEach((pending, index) => {
-          if (uploadResult.files[index]) {
-            tempIdToRealId.set(pending.tempId, uploadResult.files[index].id);
-          }
-        });
-      }
-
-      // Build final steps with real image IDs
+      // Build final steps
       const finalSteps: RecipeStepInput[] = steps
         .filter(s => s.text.trim())
         .map(step => ({
           text: step.text.trim(),
-          imageIds: (step.imageIds || [])
-            .map(id => tempIdToRealId.get(id) || id) // Replace temp IDs with real IDs
-            .filter(id => !id.startsWith('pending-')) // Remove any remaining temp IDs
+          imageUrl: step.imageUrl
         }));
 
       const input: CreateRecipeInput = {
@@ -442,10 +329,6 @@ export function RecipeFormPage() {
           <StepEditor
             steps={steps}
             onChange={setSteps}
-            stepImageMap={stepImageMap}
-            pendingImageUrls={pendingImageUrls}
-            onAddImages={handleAddStepImages}
-            onRemoveImage={handleRemoveStepImage}
           />
         </div>
 

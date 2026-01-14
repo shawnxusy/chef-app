@@ -19,18 +19,10 @@ export interface RecipeImage {
   createdAt: Date;
 }
 
-// Recipe step with images
+// Recipe step with optional image URL
 export interface RecipeStep {
   text: string;
-  imageIds: string[];
-}
-
-// Step image
-export interface StepImage {
-  id: string;
-  stepIndex: number;
-  filePath: string;
-  sortOrder: number;
+  imageUrl?: string;  // Public image URL
 }
 
 // Full recipe
@@ -42,7 +34,6 @@ export interface Recipe {
   cookTimeRange: CookTimeRange | null;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
-  stepImages: StepImage[];
   images: RecipeImage[];
   regions: CuisineRegion[];
   categories: CuisineCategory[];
@@ -75,7 +66,7 @@ export interface RecipeIngredientInput {
 
 export interface RecipeStepInput {
   text: string;
-  imageIds?: string[];
+  imageUrl?: string;
 }
 
 export interface CreateRecipeInput {
@@ -107,7 +98,6 @@ export interface RecipeFilters {
 export interface ParsedRecipeStep {
   text: string;
   imageUrl?: string;  // External URL from parsed site
-  imageId?: string;   // Local ID after download
 }
 
 export interface ParsedRecipeData {

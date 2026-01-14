@@ -310,11 +310,22 @@ export function PreparationPage() {
                         <h3 className="text-sm font-medium text-gray-700 mb-2">步骤</h3>
                         <ol className="space-y-3">
                           {recipe.steps?.map((step, stepIndex) => (
-                            <li key={stepIndex} className="flex gap-3">
-                              <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">
-                                {stepIndex + 1}
-                              </span>
-                              <p className="text-gray-700 pt-0.5">{step.text}</p>
+                            <li key={stepIndex} className="space-y-2">
+                              <div className="flex gap-3">
+                                <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-700 rounded-full flex items-center justify-center text-sm font-medium">
+                                  {stepIndex + 1}
+                                </span>
+                                <p className="text-gray-700 pt-0.5">{step.text}</p>
+                              </div>
+                              {step.imageUrl && (
+                                <div className="ml-9">
+                                  <img
+                                    src={step.imageUrl}
+                                    alt={`步骤 ${stepIndex + 1}`}
+                                    className="max-w-xs aspect-[4/3] object-cover rounded-lg"
+                                  />
+                                </div>
+                              )}
                             </li>
                           ))}
                         </ol>
