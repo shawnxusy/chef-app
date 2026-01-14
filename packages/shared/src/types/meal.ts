@@ -1,4 +1,4 @@
-import type { Recipe, RecipeListItem } from './recipe';
+import type { RecipeListItem } from './recipe';
 
 // Meal dish (recipe in a meal with order)
 export interface MealDish {

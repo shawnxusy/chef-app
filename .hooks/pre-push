@@ -1,0 +1,15 @@
+#!/bin/sh
+# Pre-push hook: Run build
+
+echo "Running build..."
+
+npm run build
+BUILD_RESULT=$?
+
+if [ $BUILD_RESULT -ne 0 ]; then
+  echo "Build failed. Please fix before pushing."
+  exit 1
+fi
+
+echo "Build passed!"
+exit 0

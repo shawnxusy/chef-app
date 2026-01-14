@@ -55,7 +55,6 @@ export function RecipeListPage() {
 
   useEffect(() => {
     fetchRecipes();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, regionIdsParam, categoryIdsParam, methodIdsParam, cookTimeRangeId, page]);
 
   const updateFilter = (key: string, value: string | string[]) => {

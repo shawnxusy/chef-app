@@ -74,7 +74,7 @@ class LLMService {
           role: 'user',
           content: `请从以下网页内容中提取菜谱信息：\n\n${textContent.slice(0, 10000)}`
         });
-      } catch (error) {
+      } catch {
         throw new Error('无法获取链接内容');
       }
     } else if (input.images && input.images.length > 0) {

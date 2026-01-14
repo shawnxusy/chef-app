@@ -1,0 +1,13 @@
+#!/bin/sh
+# Pre-commit hook: Run linter
+
+echo "Running linter..."
+npm run lint
+
+if [ $? -ne 0 ]; then
+  echo "Lint errors found. Please fix before committing."
+  exit 1
+fi
+
+echo "Lint passed!"
+exit 0

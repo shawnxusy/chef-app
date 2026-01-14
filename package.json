@@ -12,12 +12,15 @@
     "dev:web": "npm run dev -w @chef-app/web",
     "build": "npm run build -w @chef-app/shared && npm run build -w @chef-app/server && npm run build -w @chef-app/web",
     "start": "npm run start -w @chef-app/server",
-    "lint": "npm run lint -w @chef-app/server && npm run lint -w @chef-app/web",
+    "lint": "eslint packages/*/src",
     "db:migrate": "npm run migrate -w @chef-app/server",
-    "db:seed": "npm run seed -w @chef-app/server"
+    "db:seed": "npm run seed -w @chef-app/server",
+    "prepare": "cp .hooks/* .git/hooks/ && chmod +x .git/hooks/pre-commit .git/hooks/pre-push"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
     "concurrently": "^8.2.2",
-    "typescript": "~5.7.2"
+    "typescript": "~5.7.2",
+    "typescript-eslint": "^8.53.0"
   }
 }
