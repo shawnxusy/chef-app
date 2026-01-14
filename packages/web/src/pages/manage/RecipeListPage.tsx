@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useReference } from '@/context/ReferenceContext';
@@ -16,45 +16,55 @@ export function RecipeListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters from URL params - memoized to prevent infinite loops
+  // Filters from URL params (as strings for stable dependencies)
   const search = searchParams.get('search') || '';
   const regionIdsParam = searchParams.get('regionIds') || '';
   const categoryIdsParam = searchParams.get('categoryIds') || '';
   const methodIdsParam = searchParams.get('methodIds') || '';
   const cookTimeRangeId = searchParams.get('cookTimeRangeId') || '';
 
-  const regionIds = useMemo(() => regionIdsParam ? regionIdsParam.split(',').filter(Boolean) : [], [regionIdsParam]);
-  const categoryIds = useMemo(() => categoryIdsParam ? categoryIdsParam.split(',').filter(Boolean) : [], [categoryIdsParam]);
-  const methodIds = useMemo(() => methodIdsParam ? methodIdsParam.split(',').filter(Boolean) : [], [methodIdsParam]);
-
-  const fetchRecipes = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (regionIds.length) params.set('regionIds', regionIds.join(','));
-      if (categoryIds.length) params.set('categoryIds', categoryIds.join(','));
-      if (methodIds.length) params.set('methodIds', methodIds.join(','));
-      if (cookTimeRangeId) params.set('cookTimeRangeId', cookTimeRangeId);
-      params.set('page', String(page));
-      params.set('pageSize', '20');
-
-      const result = await api.get<PaginatedResponse<RecipeListItem>>(
-        `/recipes?${params.toString()}`
-      );
-      setRecipes(result.items);
-      setTotal(result.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [search, regionIds, categoryIds, methodIds, cookTimeRangeId, page]);
+  // Parse arrays for UI usage
+  const regionIds = regionIdsParam ? regionIdsParam.split(',') : [];
+  const categoryIds = categoryIdsParam ? categoryIdsParam.split(',') : [];
+  const methodIds = methodIdsParam ? methodIdsParam.split(',') : [];
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function fetchRecipes() {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams();
+        if (search) params.set('search', search);
+        if (regionIdsParam) params.set('regionIds', regionIdsParam);
+        if (categoryIdsParam) params.set('categoryIds', categoryIdsParam);
+        if (methodIdsParam) params.set('methodIds', methodIdsParam);
+        if (cookTimeRangeId) params.set('cookTimeRangeId', cookTimeRangeId);
+        params.set('page', String(page));
+        params.set('pageSize', '20');
+
+        const result = await api.get<PaginatedResponse<RecipeListItem>>(
+          `/recipes?${params.toString()}`
+        );
+        if (!cancelled) {
+          setRecipes(result.items);
+          setTotal(result.total);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : '加载失败');
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
     fetchRecipes();
-  }, [fetchRecipes]);
+    return () => { cancelled = true; };
+  }, [search, regionIdsParam, categoryIdsParam, methodIdsParam, cookTimeRangeId, page]);
 
   const updateFilter = (key: string, value: string | string[]) => {
     const newParams = new URLSearchParams(searchParams);
