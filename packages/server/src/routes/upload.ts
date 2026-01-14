@@ -4,6 +4,7 @@ import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { asyncHandler, AppError } from '../middleware/error.js';
 import fs from 'fs';
+import { db } from '../db/client.js';
 
 const router = Router();
 
@@ -50,11 +51,26 @@ router.post('/', upload.array('files', 10), asyncHandler(async (req, res) => {
     throw new AppError('NO_FILES', '请选择要上传的文件', 400);
   }
 
-  const uploadedFiles = files.map(file => ({
-    id: path.basename(file.filename, path.extname(file.filename)),
-    filePath: `/media/${file.filename}`,
-    originalName: file.originalname
-  }));
+  const uploadedFiles = [];
+
+  for (const file of files) {
+    const id = path.basename(file.filename, path.extname(file.filename));
+    const filePath = `/media/${file.filename}`;
+
+    // Insert into recipe_images with recipe_id = NULL
+    // The recipe_id will be set when the recipe is created/updated
+    await db.query(
+      `INSERT INTO recipe_images (id, recipe_id, file_path, sort_order)
+       VALUES ($1, NULL, $2, 0)`,
+      [id, filePath]
+    );
+
+    uploadedFiles.push({
+      id,
+      filePath,
+      originalName: file.originalname
+    });
+  }
 
   return res.json({
     success: true,

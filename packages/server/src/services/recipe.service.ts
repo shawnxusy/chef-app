@@ -488,6 +488,22 @@ class RecipeService {
         }
       }
 
+      // Update images
+      if (input.imageIds !== undefined) {
+        // Clear existing image associations
+        await client.query(
+          `UPDATE recipe_images SET recipe_id = NULL WHERE recipe_id = $1`,
+          [input.id]
+        );
+        // Associate new images
+        for (let i = 0; i < input.imageIds.length; i++) {
+          await client.query(
+            `UPDATE recipe_images SET recipe_id = $1, sort_order = $2 WHERE id = $3`,
+            [input.id, i, input.imageIds[i]]
+          );
+        }
+      }
+
       return this.getRecipe(input.id);
     });
   }
