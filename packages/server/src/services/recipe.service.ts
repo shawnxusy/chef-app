@@ -6,8 +6,10 @@ import type {
   UpdateRecipeInput,
   RecipeFilters,
   PaginatedResponse,
-  RecipeStep
+  RecipeStep,
+  RecipeStepInput
 } from '@chef-app/shared';
+import { isExternalUrl, downloadImage } from './image-download.js';
 
 // Helper to convert step data to RecipeStep[] format
 function normalizeSteps(steps: unknown): RecipeStep[] {
@@ -24,6 +26,22 @@ function normalizeSteps(steps: unknown): RecipeStep[] {
     text: step.text || '',
     imageUrl: step.imageUrl
   }));
+}
+
+// Download external step images and replace URLs with local paths
+async function downloadStepImages(steps: RecipeStepInput[]): Promise<RecipeStepInput[]> {
+  const downloadPromises = steps.map(async (step) => {
+    if (step.imageUrl && isExternalUrl(step.imageUrl)) {
+      const localPath = await downloadImage(step.imageUrl);
+      return {
+        text: step.text,
+        imageUrl: localPath || undefined // Use local path, or remove if download failed
+      };
+    }
+    return step;
+  });
+
+  return Promise.all(downloadPromises);
 }
 
 class RecipeService {
@@ -271,6 +289,11 @@ class RecipeService {
   }
 
   async createRecipe(input: CreateRecipeInput): Promise<Recipe> {
+    // Download external step images before saving
+    const stepsWithLocalImages = input.steps
+      ? await downloadStepImages(input.steps)
+      : [];
+
     return db.transaction(async (client) => {
       // Create recipe
       const recipeResult = await client.query(
@@ -281,7 +304,7 @@ class RecipeService {
           input.name,
           input.alternativeName || null,
           input.cookTimeRangeId || null,
-          JSON.stringify(input.steps || [])
+          JSON.stringify(stepsWithLocalImages)
         ]
       );
       const recipeId = recipeResult.rows[0].id;
@@ -343,6 +366,12 @@ class RecipeService {
   }
 
   async updateRecipe(input: UpdateRecipeInput): Promise<Recipe | null> {
+    // Download external step images before saving (if steps are being updated)
+    let stepsWithLocalImages: RecipeStepInput[] | undefined;
+    if (input.steps) {
+      stepsWithLocalImages = await downloadStepImages(input.steps);
+    }
+
     return db.transaction(async (client) => {
       // Check recipe exists
       const checkResult = await client.query(
@@ -370,14 +399,9 @@ class RecipeService {
         updates.push(`cook_time_range_id = $${paramIndex++}`);
         params.push(input.cookTimeRangeId);
       }
-      if (input.steps !== undefined) {
+      if (stepsWithLocalImages !== undefined) {
         updates.push(`steps = $${paramIndex++}`);
-        // Store steps with optional imageUrl
-        const stepsToStore = input.steps.map(s => ({
-          text: s.text,
-          imageUrl: s.imageUrl
-        }));
-        params.push(JSON.stringify(stepsToStore));
+        params.push(JSON.stringify(stepsWithLocalImages));
       }
 
       if (params.length > 0) {
