@@ -3,6 +3,9 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "workspaces": [
     "packages/*"
   ],
@@ -15,7 +18,7 @@
     "lint": "eslint packages/*/src",
     "db:migrate": "npm run migrate -w @chef-app/server",
     "db:seed": "npm run seed -w @chef-app/server",
-    "prepare": "cp .hooks/* .git/hooks/ && chmod +x .git/hooks/pre-commit .git/hooks/pre-push"
+    "setup-hooks": "cp .hooks/* .git/hooks/ && chmod +x .git/hooks/pre-commit .git/hooks/pre-push"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
