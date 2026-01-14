@@ -50,6 +50,11 @@ app.use(session({
 const mediaPath = process.env.NODE_ENV === 'production' ? '/media' : path.join(__dirname, '../../media');
 app.use('/media', express.static(mediaPath));
 
+// Health check endpoint (before auth)
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // API routes
 app.use('/api/auth', authRoutes);
 
@@ -83,8 +88,25 @@ async function startServer() {
     // Continue anyway - migrations might already be done
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+  });
+
+  // Handle graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    server.close(() => {
+      console.log('Server closed');
+      process.exit(0);
+    });
+  });
+
+  process.on('uncaughtException', (err) => {
+    console.error('Uncaught Exception:', err);
+  });
+
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   });
 }
 
