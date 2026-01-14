@@ -21,24 +21,42 @@ function normalizeSteps(steps: unknown): RecipeStep[] {
     return steps.map((text: string) => ({ text }));
   }
 
-  // Object format with text and optional imageUrl
-  return steps.map((step: { text?: string; imageUrl?: string }) => ({
-    text: step.text || '',
-    imageUrl: step.imageUrl
-  }));
+  // Object format with text and optional imageUrls
+  return steps.map((step: { text?: string; imageUrl?: string; imageUrls?: string[] }) => {
+    // Support both old imageUrl and new imageUrls format
+    let imageUrls = step.imageUrls;
+    if (!imageUrls && step.imageUrl) {
+      imageUrls = [step.imageUrl];
+    }
+    return {
+      text: step.text || '',
+      imageUrls: imageUrls?.filter(Boolean)
+    };
+  });
 }
 
 // Download external step images and replace URLs with local paths
 async function downloadStepImages(steps: RecipeStepInput[]): Promise<RecipeStepInput[]> {
   const downloadPromises = steps.map(async (step) => {
-    if (step.imageUrl && isExternalUrl(step.imageUrl)) {
-      const localPath = await downloadImage(step.imageUrl);
-      return {
-        text: step.text,
-        imageUrl: localPath || undefined // Use local path, or remove if download failed
-      };
+    if (!step.imageUrls || step.imageUrls.length === 0) {
+      return step;
     }
-    return step;
+
+    // Download all external images in parallel
+    const downloadedUrls = await Promise.all(
+      step.imageUrls.map(async (url) => {
+        if (isExternalUrl(url)) {
+          const localPath = await downloadImage(url);
+          return localPath || null; // null if download failed
+        }
+        return url; // Already local
+      })
+    );
+
+    return {
+      text: step.text,
+      imageUrls: downloadedUrls.filter((url): url is string => url !== null)
+    };
   });
 
   return Promise.all(downloadPromises);

@@ -48,11 +48,11 @@ export function RecipeFormPage() {
             count: ing.count,
           })) || []
         );
-        // Steps with optional imageUrl
+        // Steps with optional imageUrls
         const loadedSteps: RecipeStepInput[] = recipe.steps?.length
           ? recipe.steps.map(s => ({
               text: s.text,
-              imageUrl: s.imageUrl
+              imageUrls: s.imageUrls
             }))
           : [{ text: '' }];
         setSteps(loadedSteps);
@@ -84,11 +84,11 @@ export function RecipeFormPage() {
 
     setIngredients(newIngredients);
 
-    // Steps with imageUrl from parsing
+    // Steps with imageUrls from parsing (convert single imageUrl to array)
     const newSteps: RecipeStepInput[] = data.steps.length
       ? data.steps.map(s => ({
           text: s.text,
-          imageUrl: s.imageUrl
+          imageUrls: s.imageUrl ? [s.imageUrl] : undefined
         }))
       : [{ text: '' }];
     setSteps(newSteps);
@@ -120,7 +120,7 @@ export function RecipeFormPage() {
         .filter(s => s.text.trim())
         .map(step => ({
           text: step.text.trim(),
-          imageUrl: step.imageUrl
+          imageUrls: step.imageUrls?.filter(Boolean)
         }));
 
       const input: CreateRecipeInput = {

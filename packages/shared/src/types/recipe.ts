@@ -19,10 +19,10 @@ export interface RecipeImage {
   createdAt: Date;
 }
 
-// Recipe step with optional image URL
+// Recipe step with optional image URLs (up to 3)
 export interface RecipeStep {
   text: string;
-  imageUrl?: string;  // Public image URL
+  imageUrls?: string[];  // Up to 3 image URLs
 }
 
 // Full recipe
@@ -66,7 +66,7 @@ export interface RecipeIngredientInput {
 
 export interface RecipeStepInput {
   text: string;
-  imageUrl?: string;
+  imageUrls?: string[];  // Up to 3 image URLs
 }
 
 export interface CreateRecipeInput {

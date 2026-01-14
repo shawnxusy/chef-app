@@ -317,13 +317,16 @@ export function PreparationPage() {
                                 </span>
                                 <p className="text-gray-700 pt-0.5">{step.text}</p>
                               </div>
-                              {step.imageUrl && (
-                                <div className="ml-9">
-                                  <img
-                                    src={step.imageUrl}
-                                    alt={`步骤 ${stepIndex + 1}`}
-                                    className="max-w-xs aspect-[4/3] object-cover rounded-lg"
-                                  />
+                              {step.imageUrls && step.imageUrls.length > 0 && (
+                                <div className="ml-9 flex flex-wrap gap-2">
+                                  {step.imageUrls.map((url, imgIndex) => (
+                                    <img
+                                      key={imgIndex}
+                                      src={url}
+                                      alt={`步骤 ${stepIndex + 1} 图片 ${imgIndex + 1}`}
+                                      className="max-w-[200px] aspect-[4/3] object-cover rounded-lg"
+                                    />
+                                  ))}
                                 </div>
                               )}
                             </li>
