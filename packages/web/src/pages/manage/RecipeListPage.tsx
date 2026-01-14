@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useReference } from '@/context/ReferenceContext';
@@ -16,12 +16,16 @@ export function RecipeListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Filters from URL params
+  // Filters from URL params - memoized to prevent infinite loops
   const search = searchParams.get('search') || '';
-  const regionIds = searchParams.get('regionIds')?.split(',').filter(Boolean) || [];
-  const categoryIds = searchParams.get('categoryIds')?.split(',').filter(Boolean) || [];
-  const methodIds = searchParams.get('methodIds')?.split(',').filter(Boolean) || [];
+  const regionIdsParam = searchParams.get('regionIds') || '';
+  const categoryIdsParam = searchParams.get('categoryIds') || '';
+  const methodIdsParam = searchParams.get('methodIds') || '';
   const cookTimeRangeId = searchParams.get('cookTimeRangeId') || '';
+
+  const regionIds = useMemo(() => regionIdsParam ? regionIdsParam.split(',').filter(Boolean) : [], [regionIdsParam]);
+  const categoryIds = useMemo(() => categoryIdsParam ? categoryIdsParam.split(',').filter(Boolean) : [], [categoryIdsParam]);
+  const methodIds = useMemo(() => methodIdsParam ? methodIdsParam.split(',').filter(Boolean) : [], [methodIdsParam]);
 
   const fetchRecipes = useCallback(async () => {
     setIsLoading(true);
