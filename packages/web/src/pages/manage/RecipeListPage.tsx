@@ -28,42 +28,34 @@ export function RecipeListPage() {
   const categoryIds = categoryIdsParam ? categoryIdsParam.split(',') : [];
   const methodIds = methodIdsParam ? methodIdsParam.split(',') : [];
 
-  useEffect(() => {
-    let cancelled = false;
+  async function fetchRecipes() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (regionIdsParam) params.set('regionIds', regionIdsParam);
+      if (categoryIdsParam) params.set('categoryIds', categoryIdsParam);
+      if (methodIdsParam) params.set('methodIds', methodIdsParam);
+      if (cookTimeRangeId) params.set('cookTimeRangeId', cookTimeRangeId);
+      params.set('page', String(page));
+      params.set('pageSize', '20');
 
-    async function fetchRecipes() {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const params = new URLSearchParams();
-        if (search) params.set('search', search);
-        if (regionIdsParam) params.set('regionIds', regionIdsParam);
-        if (categoryIdsParam) params.set('categoryIds', categoryIdsParam);
-        if (methodIdsParam) params.set('methodIds', methodIdsParam);
-        if (cookTimeRangeId) params.set('cookTimeRangeId', cookTimeRangeId);
-        params.set('page', String(page));
-        params.set('pageSize', '20');
-
-        const result = await api.get<PaginatedResponse<RecipeListItem>>(
-          `/recipes?${params.toString()}`
-        );
-        if (!cancelled) {
-          setRecipes(result.items);
-          setTotal(result.total);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : '加载失败');
-        }
-      } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
-      }
+      const result = await api.get<PaginatedResponse<RecipeListItem>>(
+        `/recipes?${params.toString()}`
+      );
+      setRecipes(result.items);
+      setTotal(result.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载失败');
+    } finally {
+      setIsLoading(false);
     }
+  }
 
+  useEffect(() => {
     fetchRecipes();
-    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search, regionIdsParam, categoryIdsParam, methodIdsParam, cookTimeRangeId, page]);
 
   const updateFilter = (key: string, value: string | string[]) => {
