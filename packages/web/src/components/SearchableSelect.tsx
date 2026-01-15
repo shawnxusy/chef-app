@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
+import { pinyin } from 'pinyin-pro';
 
 interface Option {
   id: string;
@@ -33,11 +34,16 @@ export function SearchableSelect({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Filter options based on search
+  // Filter options based on search (supports both Chinese and pinyin)
   const filteredOptions = useMemo(() => {
     if (!searchTerm) return options;
     const term = searchTerm.toLowerCase();
-    return options.filter((opt) => opt.label.toLowerCase().includes(term));
+    return options.filter((opt) => {
+      const label = opt.label.toLowerCase();
+      // Convert to pinyin without spaces (e.g., "大米" -> "dami")
+      const pinyinLabel = pinyin(opt.label, { toneType: 'none', separator: '' }).toLowerCase();
+      return label.includes(term) || pinyinLabel.includes(term);
+    });
   }, [options, searchTerm]);
 
   // Group filtered options
