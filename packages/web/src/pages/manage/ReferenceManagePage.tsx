@@ -197,19 +197,43 @@ export function ReferenceManagePage() {
   const currentTab = tabs.find((t) => t.key === activeTab)!;
 
   return (
-    <div className="max-w-6xl mx-auto">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header */}
-      <div className="mb-6">
-        <Link to="/manage" className="text-sm text-gray-500 hover:text-gray-700">
+      <div className="mb-4 md:mb-6">
+        <Link to="/manage" className="text-sm text-gray-500 hover:text-gray-700 inline-flex items-center gap-1">
           ← 返回菜谱列表
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">数据管理</h1>
-        <p className="text-gray-500 mt-1">管理食材、单位、菜系等基础数据</p>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">数据管理</h1>
+        <p className="text-sm sm:text-base text-gray-500 mt-1">管理食材、单位、菜系等基础数据</p>
       </div>
 
-      <div className="flex gap-6">
-        {/* Sidebar - Tab Navigation */}
-        <div className="w-48 flex-shrink-0">
+      {/* Mobile Tab Navigation - Horizontal Scrollable */}
+      <div className="md:hidden mb-4 -mx-4 px-4 overflow-x-auto">
+        <div className="flex gap-2 min-w-min pb-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => {
+                setActiveTab(tab.key);
+                setSearchTerm('');
+                resetForm();
+              }}
+              className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm transition-colors whitespace-nowrap ${
+                activeTab === tab.key
+                  ? 'bg-primary-50 text-primary-700 font-medium'
+                  : 'text-gray-600 bg-gray-50 hover:bg-gray-100'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="md:flex md:gap-6">
+        {/* Desktop Sidebar - Tab Navigation */}
+        <div className="hidden md:block w-48 flex-shrink-0">
           <nav className="space-y-1">
             {tabs.map((tab) => (
               <button
@@ -236,8 +260,8 @@ export function ReferenceManagePage() {
         <div className="flex-1 min-w-0">
           <div className="card">
             {/* Tab Header */}
-            <div className="px-6 py-4 border-b border-gray-100">
-              <div className="flex items-center justify-between">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-100">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                     <span>{currentTab.icon}</span>
@@ -250,14 +274,14 @@ export function ReferenceManagePage() {
             </div>
 
             {/* Search & Add */}
-            <div className="px-6 py-4 border-b border-gray-100 flex gap-3">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   placeholder="搜索..."
-                  className="input pl-10"
+                  className="input pl-10 w-full"
                 />
                 <svg
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
@@ -273,7 +297,7 @@ export function ReferenceManagePage() {
                   resetForm();
                   setIsAdding(true);
                 }}
-                className="btn-primary"
+                className="btn-primary w-full sm:w-auto"
               >
                 <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -284,11 +308,11 @@ export function ReferenceManagePage() {
 
             {/* Add/Edit Form */}
             {(isAdding || editingId) && (
-              <div className="px-6 py-4 bg-gray-50 border-b border-gray-100">
+              <div className="px-4 md:px-6 py-4 bg-gray-50 border-b border-gray-100">
                 <h3 className="text-sm font-medium text-gray-700 mb-3">
                   {editingId ? '编辑' : '添加新'}{currentTab.label}
                 </h3>
-                
+
                 {/* Delete Error with Recipe Links */}
                 {deleteError && (
                   <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -316,7 +340,7 @@ export function ReferenceManagePage() {
                   </div>
                 )}
 
-                <div className="flex gap-3 flex-wrap">
+                <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
                   {activeTab === 'units' && (
                     <>
                       <input
@@ -324,14 +348,14 @@ export function ReferenceManagePage() {
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
                         placeholder="英文名 (如: g, tbsp)"
-                        className="input w-40"
+                        className="input w-full sm:w-40"
                       />
                       <input
                         type="text"
                         value={formNameZh}
                         onChange={(e) => setFormNameZh(e.target.value)}
                         placeholder="中文名 (如: 克, 大勺)"
-                        className="input w-40"
+                        className="input w-full sm:w-40"
                       />
                     </>
                   )}
@@ -343,12 +367,12 @@ export function ReferenceManagePage() {
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
                         placeholder="食材名称"
-                        className="input w-48"
+                        className="input w-full sm:w-48"
                       />
                       <select
                         value={formCategory}
                         onChange={(e) => setFormCategory(e.target.value)}
-                        className="input w-36"
+                        className="input w-full sm:w-36"
                       >
                         <option value="">选择分类</option>
                         {ingredientCategories.map((cat) => (
@@ -365,21 +389,21 @@ export function ReferenceManagePage() {
                         value={formLabel}
                         onChange={(e) => setFormLabel(e.target.value)}
                         placeholder="标签 (如: 15-30分钟)"
-                        className="input w-40"
+                        className="input w-full sm:w-40"
                       />
                       <input
                         type="number"
                         value={formMinMinutes}
                         onChange={(e) => setFormMinMinutes(e.target.value)}
                         placeholder="最小分钟"
-                        className="input w-28"
+                        className="input w-full sm:w-28"
                       />
                       <input
                         type="number"
                         value={formMaxMinutes}
                         onChange={(e) => setFormMaxMinutes(e.target.value)}
                         placeholder="最大分钟"
-                        className="input w-28"
+                        className="input w-full sm:w-28"
                       />
                     </>
                   )}
@@ -390,21 +414,21 @@ export function ReferenceManagePage() {
                       value={formName}
                       onChange={(e) => setFormName(e.target.value)}
                       placeholder="名称"
-                      className="input w-48"
+                      className="input w-full sm:w-48"
                     />
                   )}
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="btn-primary"
+                      className="btn-primary flex-1 sm:flex-none"
                     >
                       {isSaving ? <LoadingSpinner size="sm" /> : '保存'}
                     </button>
                     <button
                       onClick={resetForm}
-                      className="btn-secondary"
+                      className="btn-secondary flex-1 sm:flex-none"
                     >
                       取消
                     </button>
@@ -416,7 +440,7 @@ export function ReferenceManagePage() {
             {/* Items List */}
             <div className="max-h-[500px] overflow-y-auto">
               {filteredItems.length === 0 ? (
-                <div className="px-6 py-12 text-center text-gray-500">
+                <div className="px-4 md:px-6 py-12 text-center text-gray-500">
                   {searchTerm ? '无匹配项' : '暂无数据'}
                 </div>
               ) : activeTab === 'ingredients' ? (
@@ -424,7 +448,7 @@ export function ReferenceManagePage() {
                 <div className="divide-y divide-gray-100">
                   {Object.entries(groupedIngredients).map(([category, items]) => (
                     <div key={category}>
-                      <div className="sticky top-0 px-6 py-2 bg-gray-50 text-sm font-medium text-gray-700 border-b border-gray-100">
+                      <div className="sticky top-0 px-4 md:px-6 py-2 bg-gray-50 text-sm font-medium text-gray-700 border-b border-gray-100">
                         {category}
                         <span className="ml-2 text-gray-400">({items.length})</span>
                       </div>
@@ -432,15 +456,15 @@ export function ReferenceManagePage() {
                         {items.map((item) => (
                           <div
                             key={item.id}
-                            className={`px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                            className={`px-4 md:px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
                               editingId === item.id ? 'bg-primary-50' : ''
                             }`}
                           >
-                            <span className="text-gray-900">{item.name}</span>
-                            <div className="flex gap-2">
+                            <span className="text-gray-900 truncate mr-2">{item.name}</span>
+                            <div className="flex gap-2 flex-shrink-0">
                               <button
                                 onClick={() => startEditing(item)}
-                                className="text-gray-400 hover:text-primary-600 transition-colors"
+                                className="text-gray-400 hover:text-primary-600 transition-colors p-1"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -448,7 +472,7 @@ export function ReferenceManagePage() {
                               </button>
                               <button
                                 onClick={() => handleDelete(item.id)}
-                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                className="text-gray-400 hover:text-red-500 transition-colors p-1"
                               >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -467,18 +491,18 @@ export function ReferenceManagePage() {
                   {(filteredItems as Unit[]).map((item) => (
                     <div
                       key={item.id}
-                      className={`px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                      className={`px-4 md:px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
                         editingId === item.id ? 'bg-primary-50' : ''
                       }`}
                     >
-                      <div>
+                      <div className="truncate mr-2">
                         <span className="text-gray-900 font-medium">{item.nameZh}</span>
                         <span className="text-gray-500 ml-2">({item.name})</span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => startEditing(item)}
-                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          className="text-gray-400 hover:text-primary-600 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -486,7 +510,7 @@ export function ReferenceManagePage() {
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -502,20 +526,20 @@ export function ReferenceManagePage() {
                   {(filteredItems as CookTimeRange[]).map((item) => (
                     <div
                       key={item.id}
-                      className={`px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                      className={`px-4 md:px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
                         editingId === item.id ? 'bg-primary-50' : ''
                       }`}
                     >
-                      <div>
+                      <div className="truncate mr-2">
                         <span className="text-gray-900">{item.label}</span>
                         <span className="text-gray-400 text-sm ml-2">
                           ({item.minMinutes ?? '0'} - {item.maxMinutes ?? '∞'} 分钟)
                         </span>
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => startEditing(item)}
-                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          className="text-gray-400 hover:text-primary-600 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -523,7 +547,7 @@ export function ReferenceManagePage() {
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -539,15 +563,15 @@ export function ReferenceManagePage() {
                   {(filteredItems as Array<CuisineRegion | CuisineCategory | CookingMethod>).map((item) => (
                     <div
                       key={item.id}
-                      className={`px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
+                      className={`px-4 md:px-6 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors ${
                         editingId === item.id ? 'bg-primary-50' : ''
                       }`}
                     >
-                      <span className="text-gray-900">{item.name}</span>
-                      <div className="flex gap-2">
+                      <span className="text-gray-900 truncate mr-2">{item.name}</span>
+                      <div className="flex gap-2 flex-shrink-0">
                         <button
                           onClick={() => startEditing(item)}
-                          className="text-gray-400 hover:text-primary-600 transition-colors"
+                          className="text-gray-400 hover:text-primary-600 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -555,7 +579,7 @@ export function ReferenceManagePage() {
                         </button>
                         <button
                           onClick={() => handleDelete(item.id)}
-                          className="text-gray-400 hover:text-red-500 transition-colors"
+                          className="text-gray-400 hover:text-red-500 transition-colors p-1"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
