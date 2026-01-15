@@ -117,7 +117,7 @@ router.get('/:type', asyncHandler(async (req, res) => {
 // GET /api/reference/:type/:id/usage - Check if item is used in any recipes
 router.get('/:type/:id/usage', asyncHandler(async (req, res) => {
   const type = req.params.type as ReferenceType;
-  const { id } = req.params;
+  const id = req.params.id as string;
 
   if (!tableMap[type]) {
     throw new AppError('INVALID_TYPE', '无效的类型', 400);
@@ -181,7 +181,7 @@ router.post('/:type', asyncHandler(async (req, res) => {
 // PUT /api/reference/:type/:id - Update reference item
 router.put('/:type/:id', asyncHandler(async (req, res) => {
   const type = req.params.type as ReferenceType;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const tableInfo = tableMap[type];
 
   if (!tableInfo) {
@@ -227,7 +227,7 @@ router.put('/:type/:id', asyncHandler(async (req, res) => {
 // DELETE /api/reference/:type/:id - Delete reference item
 router.delete('/:type/:id', asyncHandler(async (req, res) => {
   const type = req.params.type as ReferenceType;
-  const { id } = req.params;
+  const id = req.params.id as string;
   const tableInfo = tableMap[type];
 
   if (!tableInfo) {
