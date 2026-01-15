@@ -6,6 +6,7 @@ import { Layout } from '@/components/Layout';
 import { RecipeListPage } from '@/pages/manage/RecipeListPage';
 import { RecipeFormPage } from '@/pages/manage/RecipeFormPage';
 import { RecipeDetailPage } from '@/pages/manage/RecipeDetailPage';
+import { ReferenceManagePage } from '@/pages/manage/ReferenceManagePage';
 import { MealListPage } from '@/pages/cook/MealListPage';
 import { MealBuilderPage } from '@/pages/cook/MealBuilderPage';
 import { PreparationPage } from '@/pages/cook/PreparationPage';
@@ -34,6 +35,7 @@ function ProtectedRoutes() {
           <Route path="/" element={<Navigate to="/manage" replace />} />
           <Route path="/manage" element={<RecipeListPage />} />
           <Route path="/manage/new" element={<RecipeFormPage />} />
+          <Route path="/manage/reference" element={<ReferenceManagePage />} />
           <Route path="/manage/:id" element={<RecipeDetailPage />} />
           <Route path="/manage/:id/edit" element={<RecipeFormPage />} />
 

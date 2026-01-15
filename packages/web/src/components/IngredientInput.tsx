@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import type { RecipeIngredientInput, Ingredient, Unit } from '@chef-app/shared';
+import { SearchableSelect } from './SearchableSelect';
 
 interface IngredientInputProps {
   ingredients: RecipeIngredientInput[];
@@ -14,7 +15,25 @@ export function IngredientInput({
   availableIngredients,
   availableUnits,
 }: IngredientInputProps) {
-  const [searchTerm, setSearchTerm] = useState('');
+  // Convert ingredients to searchable options with grouping
+  const ingredientOptions = useMemo(() => {
+    return availableIngredients.map((ing) => ({
+      id: ing.id,
+      label: ing.name,
+      group: ing.category || '其他',
+    }));
+  }, [availableIngredients]);
+
+  // Convert units to searchable options
+  const unitOptions = useMemo(() => {
+    return [
+      { id: '', label: '适量' },
+      ...availableUnits.map((unit) => ({
+        id: unit.id,
+        label: `${unit.nameZh} (${unit.name})`,
+      })),
+    ];
+  }, [availableUnits]);
 
   const addIngredient = () => {
     onChange([...ingredients, { ingredientId: '', unitId: null, count: null }]);
@@ -30,26 +49,21 @@ export function IngredientInput({
     onChange(ingredients.filter((_, i) => i !== index));
   };
 
-  const filteredIngredients = searchTerm
-    ? availableIngredients.filter((ing) =>
-        ing.name.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : availableIngredients;
-
-  // Group ingredients by category
-  const groupedIngredients = filteredIngredients.reduce((acc, ing) => {
-    const category = ing.category || '其他';
-    if (!acc[category]) {
-      acc[category] = [];
-    }
-    acc[category].push(ing);
-    return acc;
-  }, {} as Record<string, Ingredient[]>);
-
   return (
     <div className="space-y-3">
       {ingredients.map((ing, index) => (
         <div key={index} className="flex gap-2 items-start">
+          {/* Ingredient - Searchable with autocomplete */}
+          <div className="flex-1 min-w-0">
+            <SearchableSelect
+              options={ingredientOptions}
+              value={ing.ingredientId}
+              onChange={(value) => updateIngredient(index, { ingredientId: value })}
+              placeholder="输入搜索食材..."
+              groupBy
+            />
+          </div>
+
           {/* Count */}
           <input
             type="number"
@@ -60,53 +74,24 @@ export function IngredientInput({
               })
             }
             placeholder="数量"
-            className="input w-24"
+            className="input w-20"
             step="0.1"
           />
 
           {/* Unit */}
-          <select
+          <SearchableSelect
+            options={unitOptions}
             value={ing.unitId || ''}
-            onChange={(e) =>
-              updateIngredient(index, { unitId: e.target.value || null })
-            }
-            className="input w-28"
-          >
-            <option value="">适量</option>
-            {availableUnits.map((unit) => (
-              <option key={unit.id} value={unit.id}>
-                {unit.nameZh} ({unit.name})
-              </option>
-            ))}
-          </select>
-
-          {/* Ingredient */}
-          <div className="flex-1 relative">
-            <select
-              value={ing.ingredientId}
-              onChange={(e) =>
-                updateIngredient(index, { ingredientId: e.target.value })
-              }
-              className="input w-full"
-            >
-              <option value="">选择食材</option>
-              {Object.entries(groupedIngredients).map(([category, items]) => (
-                <optgroup key={category} label={category}>
-                  {items.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          </div>
+            onChange={(value) => updateIngredient(index, { unitId: value || null })}
+            placeholder="单位"
+            className="w-32"
+          />
 
           {/* Remove */}
           <button
             type="button"
             onClick={() => removeIngredient(index)}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+            className="p-2 text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -118,24 +103,13 @@ export function IngredientInput({
       <button
         type="button"
         onClick={addIngredient}
-        className="flex items-center text-primary-600 hover:text-primary-700 text-sm"
+        className="flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium"
       >
         <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         添加食材
       </button>
-
-      {/* Quick search */}
-      <div className="mt-4">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="搜索食材..."
-          className="input text-sm"
-        />
-      </div>
     </div>
   );
 }
