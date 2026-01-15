@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { api } from '@/api/client';
 import { useReference } from '@/context/ReferenceContext';
+import { useToast } from '@/context/ToastContext';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { IngredientInput } from '@/components/IngredientInput';
 import { StepEditor } from '@/components/StepEditor';
@@ -13,6 +14,7 @@ export function RecipeFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: refData, refresh: refreshRef } = useReference();
+  const { showToast } = useToast();
   const isEditing = !!id;
 
   const [isLoading, setIsLoading] = useState(isEditing);
@@ -95,6 +97,15 @@ export function RecipeFormPage() {
 
     // Refresh reference data in case new ingredients were added
     refreshRef();
+
+    // Show toast for newly created ingredients
+    if (data.newlyCreatedIngredients && data.newlyCreatedIngredients.length > 0) {
+      const ingredientNames = data.newlyCreatedIngredients.map(ing => ing.name).join('、');
+      showToast(
+        `自动添加了 ${data.newlyCreatedIngredients.length} 个新食材：${ingredientNames}`,
+        'success'
+      );
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -110,4 +110,8 @@ export interface ParsedRecipeData {
     matchedUnitId?: string;        // If matched to existing
   }>;
   steps: ParsedRecipeStep[];
+  newlyCreatedIngredients?: Array<{  // Ingredients created during parsing
+    name: string;
+    category: string;
+  }>;
 }

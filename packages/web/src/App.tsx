@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ReferenceProvider } from '@/context/ReferenceContext';
+import { ToastProvider } from '@/context/ToastContext';
 import { PasswordGate } from '@/pages/PasswordGate';
 import { Layout } from '@/components/Layout';
 import { RecipeListPage } from '@/pages/manage/RecipeListPage';
@@ -56,7 +57,9 @@ function ProtectedRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <ProtectedRoutes />
+      <ToastProvider>
+        <ProtectedRoutes />
+      </ToastProvider>
     </AuthProvider>
   );
 }

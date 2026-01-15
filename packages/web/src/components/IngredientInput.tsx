@@ -1,6 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { RecipeIngredientInput, Ingredient, Unit } from '@chef-app/shared';
 import { SearchableSelect } from './SearchableSelect';
+import { CreateIngredientDialog } from './CreateIngredientDialog';
+import { api } from '@/api/client';
+import { useReference } from '@/context/ReferenceContext';
+import { useToast } from '@/context/ToastContext';
 
 interface IngredientInputProps {
   ingredients: RecipeIngredientInput[];
@@ -15,6 +19,10 @@ export function IngredientInput({
   availableIngredients,
   availableUnits,
 }: IngredientInputProps) {
+  const { refresh: refreshRef } = useReference();
+  const { showToast } = useToast();
+  const [createDialogName, setCreateDialogName] = useState<string | null>(null);
+  const [resolveCreate, setResolveCreate] = useState<((id: string | null) => void) | null>(null);
   // Convert ingredients to searchable options with grouping
   const ingredientOptions = useMemo(() => {
     return availableIngredients.map((ing) => ({
@@ -49,20 +57,63 @@ export function IngredientInput({
     onChange(ingredients.filter((_, i) => i !== index));
   };
 
+  const handleCreateIngredient = async (searchTerm: string): Promise<string | null> => {
+    // Show dialog and wait for user confirmation
+    return new Promise((resolve) => {
+      setCreateDialogName(searchTerm);
+      setResolveCreate(() => resolve);
+    });
+  };
+
+  const handleConfirmCreate = async (category: string) => {
+    if (!createDialogName || !resolveCreate) return;
+
+    try {
+      const result = await api.post<Ingredient>('/reference/ingredients', {
+        name: createDialogName,
+        category
+      });
+
+      // Refresh reference data
+      await refreshRef();
+
+      showToast(`成功创建食材：${createDialogName} (${category})`, 'success');
+
+      // Resolve with the new ID
+      resolveCreate(result.id);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : '创建失败', 'error');
+      resolveCreate(null);
+    } finally {
+      setCreateDialogName(null);
+      setResolveCreate(null);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    if (resolveCreate) {
+      resolveCreate(null);
+    }
+    setCreateDialogName(null);
+    setResolveCreate(null);
+  };
+
   return (
-    <div className="space-y-3">
-      {ingredients.map((ing, index) => (
-        <div key={index} className="flex gap-2 items-start">
-          {/* Ingredient - Searchable with autocomplete */}
-          <div className="flex-1 min-w-0">
-            <SearchableSelect
-              options={ingredientOptions}
-              value={ing.ingredientId}
-              onChange={(value) => updateIngredient(index, { ingredientId: value })}
-              placeholder="输入搜索食材..."
-              groupBy
-            />
-          </div>
+    <>
+      <div className="space-y-3">
+        {ingredients.map((ing, index) => (
+          <div key={index} className="flex gap-2 items-start">
+            {/* Ingredient - Searchable with autocomplete */}
+            <div className="flex-1 min-w-0">
+              <SearchableSelect
+                options={ingredientOptions}
+                value={ing.ingredientId}
+                onChange={(value) => updateIngredient(index, { ingredientId: value })}
+                placeholder="输入搜索食材..."
+                groupBy
+                onCreate={handleCreateIngredient}
+              />
+            </div>
 
           {/* Count */}
           <input
@@ -100,16 +151,26 @@ export function IngredientInput({
         </div>
       ))}
 
-      <button
-        type="button"
-        onClick={addIngredient}
-        className="flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium"
-      >
-        <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-        </svg>
-        添加食材
-      </button>
-    </div>
+        <button
+          type="button"
+          onClick={addIngredient}
+          className="flex items-center text-primary-600 hover:text-primary-700 text-sm font-medium"
+        >
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          添加食材
+        </button>
+      </div>
+
+      {/* Create Ingredient Dialog */}
+      {createDialogName && (
+        <CreateIngredientDialog
+          ingredientName={createDialogName}
+          onConfirm={handleConfirmCreate}
+          onCancel={handleCancelCreate}
+        />
+      )}
+    </>
   );
 }

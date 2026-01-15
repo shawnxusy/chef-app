@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import * as cheerio from 'cheerio';
 import { db } from '../db/client.js';
 import type { ParsedRecipeData } from '@chef-app/shared';
+import { INGREDIENT_CATEGORIES } from '@chef-app/shared';
 import { getExtractor, extractSchemaRecipe, type ExtractedRecipe } from './extractors/index.js';
 
 interface ParseRecipeInput {
@@ -24,12 +25,126 @@ class LLMService {
   }
 
   async parseRecipe(input: ParseRecipeInput): Promise<ParsedRecipeData> {
+    let result: ParsedRecipeData;
+
     if (input.url) {
-      return this.parseFromUrl(input.url);
+      result = await this.parseFromUrl(input.url);
     } else if (input.images && input.images.length > 0) {
-      return this.parseFromImages(input.images);
+      result = await this.parseFromImages(input.images);
+    } else {
+      throw new Error('请提供链接或图片');
     }
-    throw new Error('请提供链接或图片');
+
+    // Auto-create missing ingredients
+    return await this.autoCreateMissingIngredients(result);
+  }
+
+  private async autoCreateMissingIngredients(result: ParsedRecipeData): Promise<ParsedRecipeData> {
+    // Find ingredients that weren't matched
+    const missingIngredients = result.ingredients
+      .filter(ing => !ing.matchedIngredientId)
+      .map(ing => ing.name);
+
+    if (missingIngredients.length === 0) {
+      return result;
+    }
+
+    // Call LLM to categorize missing ingredients
+    const categorizedIngredients = await this.categorizeIngredients(missingIngredients);
+
+    // Insert new ingredients into DB
+    const newlyCreated: Array<{ name: string; category: string }> = [];
+
+    for (const ing of categorizedIngredients) {
+      try {
+        const insertResult = await db.query<{ id: string }>(
+          'INSERT INTO ingredients (name, category) VALUES ($1, $2) RETURNING id',
+          [ing.name, ing.category]
+        );
+        const newId = insertResult.rows[0].id;
+
+        // Update the result with the new ingredient ID
+        const ingInResult = result.ingredients.find(i => i.name === ing.name);
+        if (ingInResult) {
+          ingInResult.matchedIngredientId = newId;
+        }
+
+        newlyCreated.push({ name: ing.name, category: ing.category });
+      } catch (err) {
+        // Ignore duplicates (might be created concurrently)
+        console.warn(`Failed to create ingredient ${ing.name}:`, err);
+      }
+    }
+
+    // Add newly created ingredients to result
+    if (newlyCreated.length > 0) {
+      result.newlyCreatedIngredients = newlyCreated;
+    }
+
+    return result;
+  }
+
+  private async categorizeIngredients(
+    ingredientNames: string[]
+  ): Promise<Array<{ name: string; category: string }>> {
+    const client = this.getClient();
+
+    const categoryList = INGREDIENT_CATEGORIES.join(', ');
+
+    const prompt = `请为以下食材分配合适的分类。
+
+食材列表:
+${ingredientNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
+
+可用的分类: ${categoryList}
+
+输出JSON格式:
+{
+  "ingredients": [
+    {"name": "食材名称", "category": "分类"}
+  ]
+}
+
+规则:
+1. 每个食材必须分配到最合适的一个分类
+2. 分类必须从可用分类中选择
+3. 如果不确定，使用"其他"
+4. 只输出JSON`;
+
+    try {
+      const response = await client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        messages: [{ role: 'user', content: prompt }]
+      });
+
+      const textContent = response.content.find(c => c.type === 'text');
+      if (!textContent || textContent.type !== 'text') {
+        // Fallback: use "其他" for all
+        return ingredientNames.map(name => ({ name, category: '其他' }));
+      }
+
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        return ingredientNames.map(name => ({ name, category: '其他' }));
+      }
+
+      const parsed = JSON.parse(jsonMatch[0]) as {
+        ingredients: Array<{ name: string; category: string }>;
+      };
+
+      // Validate categories and fallback to "其他" if invalid
+      return parsed.ingredients.map(ing => ({
+        name: ing.name,
+        category: (INGREDIENT_CATEGORIES as readonly string[]).includes(ing.category)
+          ? ing.category
+          : '其他'
+      }));
+    } catch (err) {
+      console.error('Failed to categorize ingredients:', err);
+      // Fallback: use "其他" for all
+      return ingredientNames.map(name => ({ name, category: '其他' }));
+    }
   }
 
   private async parseFromUrl(url: string): Promise<ParsedRecipeData> {
