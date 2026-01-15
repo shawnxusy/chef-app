@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { INGREDIENT_CATEGORIES } from '@chef-app/shared';
+
+const INGREDIENT_CATEGORIES = [
+  '蔬菜', '肉类', '海鲜', '调料', '蛋奶', '豆制品',
+  '主食', '坚果', '干果', '水果', '其他'
+] as const;
 
 interface CreateIngredientDialogProps {
   ingredientName: string;

@@ -2,8 +2,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import * as cheerio from 'cheerio';
 import { db } from '../db/client.js';
 import type { ParsedRecipeData } from '@chef-app/shared';
-import { INGREDIENT_CATEGORIES } from '@chef-app/shared';
 import { getExtractor, extractSchemaRecipe, type ExtractedRecipe } from './extractors/index.js';
+
+const INGREDIENT_CATEGORIES = [
+  '蔬菜', '肉类', '海鲜', '调料', '蛋奶', '豆制品',
+  '主食', '坚果', '干果', '水果', '其他'
+] as const;
 
 interface ParseRecipeInput {
   url?: string;
